@@ -1,124 +1,145 @@
-#include <iostream>
-#include <vector>
-#include <unordered_map>
-#include <limits>
-#include <string>
-
+#include <bits/stdc++.h>
 using namespace std;
+
+struct Condition
+{
+    vector<string> AND;
+    vector<string> OR;
+};
 
 struct Node
 {
     string name;
     int heuristic;
-    vector<pair<vector<string>, int>> children; // Pair of {child nodes (for AND/OR), cost}
-    bool solved = false;                        // To track if the node is already solved
+    Condition condition;
 };
 
-// Function to print the optimal path
-void printPath(const vector<string> &path)
+map<string, int> calculateCost(map<string, int> &heuristics, Condition &condition, int weight)
 {
-    cout << "Optimal Path: ";
-    for (const auto &node : path)
+    map<string, int> cost;
+
+    if (!condition.AND.empty())
     {
-        cout << node << " ";
+        int totalCost = 0;
+        for (const string &node : condition.AND)
+        {
+            totalCost += heuristics[node] + weight;
+        }
+        string path = "AND " + accumulate(condition.AND.begin(), condition.AND.end(), string(),
+                                          [](const string &a, const string &b)
+                                          { return a + (a.length() > 0 ? " AND " : "") + b; });
+        cost[path] = totalCost;
     }
-    cout << endl;
+
+    if (!condition.OR.empty())
+    {
+        int minCost = INT_MAX;
+        string bestNode;
+        for (const string &node : condition.OR)
+        {
+            int currentCost = heuristics[node] + weight;
+            if (currentCost < minCost)
+            {
+                minCost = currentCost;
+                bestNode = node;
+            }
+        }
+        cost["OR " + bestNode] = minCost;
+    }
+
+    return cost;
 }
 
-// Recursive AO* algorithm function
-int aostar(unordered_map<string, Node> &graph, const string &nodeName, vector<string> &path)
+map<string, map<string, int>> updateCost(map<string, int> &heuristics, map<string, Condition> &conditions, int weight)
 {
-    Node &node = graph[nodeName];
-    if (node.solved)
+    vector<string> mainNodes;
+    for (const auto &pair : conditions)
     {
-        return node.heuristic; // Return the heuristic value if the node is already solved
+        mainNodes.push_back(pair.first);
+    }
+    reverse(mainNodes.begin(), mainNodes.end());
+
+    map<string, map<string, int>> leastCost;
+
+    for (const string &key : mainNodes)
+    {
+        Condition &condition = conditions[key];
+        map<string, int> cost = calculateCost(heuristics, condition, weight);
+        heuristics[key] = min_element(cost.begin(), cost.end(),
+                                      [](const pair<string, int> &a, const pair<string, int> &b)
+                                      { return a.second < b.second; })
+                              ->second;
+        leastCost[key] = cost;
     }
 
-    if (node.children.empty())
+    return leastCost;
+}
+
+string shortestPath(const string &start, map<string, map<string, int>> &updatedCost, map<string, int> &heuristics)
+{
+    string path = start;
+    if (updatedCost.find(start) != updatedCost.end())
     {
-        node.solved = true; // Mark leaf nodes as solved
-        return node.heuristic;
-    }
+        auto &costs = updatedCost[start];
+        auto minCost = min_element(costs.begin(), costs.end(),
+                                   [](const pair<string, int> &a, const pair<string, int> &b)
+                                   { return a.second < b.second; });
+        string nextPath = minCost->first;
+        stringstream ss(nextPath);
+        string segment;
+        vector<string> nodes;
 
-    int minCost = numeric_limits<int>::max();
-    vector<string> bestChildPath;
-
-    for (auto &child : node.children)
-    {
-        vector<string> tempPath;
-        int cost = child.second; // Cost of the edge
-
-        // Process all child nodes in the AND/OR group
-        for (const auto &childName : child.first)
+        while (getline(ss, segment, ' '))
         {
-            tempPath.push_back(childName);
-            cost += aostar(graph, childName, tempPath); // Add the cost recursively
+            if (segment != "AND" && segment != "OR")
+            {
+                nodes.push_back(segment);
+            }
         }
 
-        if (cost < minCost)
+        if (nodes.size() == 1)
         {
-            minCost = cost;
-            bestChildPath = tempPath; // Update the best path
+            path += "<--" + shortestPath(nodes[0], updatedCost, heuristics);
+        }
+        else
+        {
+            path += "<--(" + nextPath + ") [" + shortestPath(nodes[0], updatedCost, heuristics) + " + " +
+                    shortestPath(nodes[1], updatedCost, heuristics) + "]";
         }
     }
-
-    node.heuristic = minCost; // Update the heuristic of the current node
-    node.solved = true;       // Mark the node as solved
-
-    path.push_back(nodeName);                                            // Add current node to the path
-    path.insert(path.end(), bestChildPath.begin(), bestChildPath.end()); // Append the best child path
-    return node.heuristic;
+    return path;
 }
 
 int main()
 {
-    unordered_map<string, Node> graph;
+    map<string, int> heuristics = {
+        {"A", -1}, {"B", 5}, {"C", 2}, {"D", 4}, {"E", 7}, {"F", 9}, {"G", 3}, {"H", 0}, {"I", 0}, {"J", 0}};
 
-    int n;
-    cout << "Enter the number of nodes: ";
-    cin >> n;
+    map<string, Condition> conditions;
+    conditions["A"].OR = {"B"};
+    conditions["A"].AND = {"C", "D"};
+    conditions["B"].OR = {"E", "F"};
+    conditions["C"].OR = {"G"};
+    conditions["C"].AND = {"H", "I"};
+    conditions["D"].OR = {"J"};
 
-    cout << "Enter the node names and their heuristic values:" << endl;
-    for (int i = 0; i < n; i++)
+    int weight = 1;
+
+    cout << "Updated Cost :" << endl;
+    map<string, map<string, int>> updatedCost = updateCost(heuristics, conditions, weight);
+    for (const auto &pair : updatedCost)
     {
-        string name;
-        int heuristic;
-        cin >> name >> heuristic;
-        graph[name] = Node{name, heuristic};
-    }
-
-    int edges;
-    cout << "Enter the number of edges: ";
-    cin >> edges;
-
-    cout << "Enter the edges in the format (parent child1,child2,... cost type(AND/OR)):" << endl;
-    for (int i = 0; i < edges; i++)
-    {
-        string parent, childList, type;
-        int cost;
-        cin >> parent >> childList >> cost >> type;
-
-        vector<string> children;
-        size_t pos = 0;
-        while ((pos = childList.find(',')) != string::npos)
+        cout << pair.first << ": ";
+        for (const auto &cost : pair.second)
         {
-            children.push_back(childList.substr(0, pos));
-            childList.erase(0, pos + 1);
+            cout << cost.first << " => " << cost.second << ", ";
         }
-        children.push_back(childList); // Add the last child
-
-        graph[parent].children.push_back({children, cost});
+        cout << endl;
     }
 
-    string start;
-    cout << "Enter the start node: ";
-    cin >> start;
-
-    vector<string> path;
-    int cost = aostar(graph, start, path);
-
-    cout << "Optimal Cost: " << cost << endl;
-    printPath(path);
+    cout << string(75, '*') << endl;
+    cout << "Shortest Path :" << endl;
+    cout << shortestPath("A", updatedCost, heuristics) << endl;
 
     return 0;
 }
