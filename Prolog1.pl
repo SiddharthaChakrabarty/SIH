@@ -1,31 +1,24 @@
-% Define diseases based on symptoms
-disease(malaria) :- symptom(fever), symptom(headache), symptom(nausea).
-disease(covid) :- symptom(fever), symptom(cough), symptom(fatigue).
+% Facts
+parent(john, mary).
+parent(john, david).
+parent(susan, mary).
+parent(susan, david).
+parent(mary, lucas).
+parent(mary, emma).
+parent(david, anna).
 
-% Predicate to ask yes/no questions about symptoms
-ask_symptom(Symptom) :-
-    format('Do you have ~w? (yes/no) ', [Symptom]),
-    read(Response),
-    (Response == yes -> assert(symptom(Symptom));
-    Response == no -> true;
-    write('Please answer yes or no.'), nl, ask_symptom(Symptom)).
+% Rules
+mother(X, Y) :- parent(X, Y), female(X).
+father(X, Y) :- parent(X, Y), male(X).
+sibling(X, Y) :- parent(Z, X), parent(Z, Y), X \= Y.
+grandparent(X, Y) :- parent(X, Z), parent(Z, Y).
+grandchild(X, Y) :- grandparent(Y, X).
 
-% Collect symptoms based on user responses
-get_symptoms :-
-    ask_symptom(fever),
-    ask_symptom(cough),
-    ask_symptom(headache),
-    ask_symptom(nausea),
-    ask_symptom(fatigue).
-
-% Predicate to predict disease based on symptoms
-predict_disease :-
-    findall(Disease, disease(Disease), Diseases),
-    (member(malaria, Diseases) -> write('Possible disease: Malaria'), nl
-    ; member(covid, Diseases) -> write('Possible disease: COVID-19'), nl
-    ; write('No matching disease found for the provided symptoms.'), nl).
-
-% To start the prediction
-start :-
-    get_symptoms,
-    predict_disease.
+% Facts for gender
+female(mary).
+female(susan).
+female(anna).
+female(emma).
+male(john).
+male(david).
+male(lucas).

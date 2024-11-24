@@ -4,54 +4,68 @@
 
 using namespace std;
 
-void bfs(int start, vector<vector<int>> &adjList, vector<bool> &visited)
+vector<int> bfs(vector<vector<int>> adj, vector<bool> vis, int start, int goal)
 {
+    vector<int> ans;
     queue<int> q;
     q.push(start);
-    visited[start] = true;
+    vis[start] = true;
 
     while (!q.empty())
     {
         int node = q.front();
         q.pop();
-        cout << node << " ";
+        ans.push_back(node);
 
-                for (int neighbor : adjList[node])
+        if (node == goal)
         {
-            if (!visited[neighbor])
+            return ans;
+        }
+
+        for (int adjnode : adj[node])
+        {
+            if (!vis[adjnode])
             {
-                q.push(neighbor);
-                visited[neighbor] = true;
+                vis[adjnode] = true;
+                q.push(adjnode);
             }
         }
     }
+    return ans;
 }
 
 int main()
 {
     int n, e;
-    cout << "Enter the number of nodes and edges: ";
+    cout << "Enter the number of nodes and edges: " << endl;
     cin >> n >> e;
+    vector<vector<int>> adj(n);
+    vector<bool> vis(n, false);
 
-    vector<vector<int>> adjList(n);
-    vector<bool> visited(n, false);
+    cout << "Enter the edges: " << endl;
 
-    cout << "Enter the edges (u v):\n";
-    for (int i = 0; i < e; ++i)
+    for (int i = 0; i < e; i++)
     {
         int u, v;
         cin >> u >> v;
-        adjList[u].push_back(v);
-        adjList[v].push_back(u);
+        adj[u].push_back(v);
+        adj[v].push_back(u);
     }
 
-    int start;
-    cout << "Enter the starting node: ";
+    int start, goal;
+    cout << "Enter start node" << endl;
     cin >> start;
+    cout << "Enter goal node" << endl;
+    cin >> goal;
 
-    cout << "BFS traversal starting from node " << start << ": ";
-    bfs(start, adjList, visited);
-    cout << endl;
+    vector<int> ans;
+    ans = bfs(adj, vis, start, goal);
+
+    cout << "BFS traversal: " << endl;
+    for (int i = 0; i < ans.size(); i++)
+    {
+        cout << ans[i] << " ";
+    }
 
     return 0;
 }

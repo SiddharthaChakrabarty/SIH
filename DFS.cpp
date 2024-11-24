@@ -4,54 +4,67 @@
 
 using namespace std;
 
-void dfs(int start, vector<vector<int>> &adjList, vector<bool> &visited)
+vector<int> dfs(vector<vector<int>> adj, vector<bool> vis, int start, int goal)
 {
-    stack<int> s;
-    s.push(start);
-    visited[start] = true;
+    stack<int> st;
+    st.push(start);
+    vis[start] = true;
+    vector<int> ans;
 
-    while (!s.empty())
+    while (!st.empty())
     {
-        int node = s.top();
-        s.pop();
-        cout << node << " ";
+        int node = st.top();
+        st.pop();
+        ans.push_back(node);
 
-        for (int neighbor : adjList[node])
+        if (node == goal)
         {
-            if (!visited[neighbor])
+            return ans;
+        }
+
+        for (int adjnode : adj[node])
+        {
+            if (!vis[adjnode])
             {
-                s.push(neighbor);
-                visited[neighbor] = true;
+                vis[adjnode] = true;
+                st.push(adjnode);
             }
         }
     }
+    return ans;
 }
 
 int main()
 {
     int n, e;
-    cout << "Enter the number of nodes and edges: ";
+    cout << "Enter the number of nodes and edges:" << endl;
     cin >> n >> e;
 
-    vector<vector<int>> adjList(n);
-    vector<bool> visited(n, false);
+    vector<vector<int>> adj(n);
+    vector<bool> vis(n, false);
 
-    cout << "Enter the edges (u v):\n";
-    for (int i = 0; i < e; ++i)
+    cout << "Enter the edges:" << endl;
+    for (int i = 0; i < e; i++)
     {
         int u, v;
         cin >> u >> v;
-        adjList[u].push_back(v);
-        adjList[v].push_back(u);
+        adj[u].push_back(v);
+        adj[v].push_back(u);
     }
 
-    int start;
-    cout << "Enter the starting node: ";
+    int start, goal;
+    cout << "Enter start node: " << endl;
     cin >> start;
+    cout << "Enter goal node: " << endl;
+    cin >> goal;
 
-    cout << "DFS traversal starting from node " << start << ": ";
-    dfs(start, adjList, visited);
-    cout << endl;
+    vector<int> ans;
+    ans = dfs(adj, vis, start, goal);
+
+    for (int i = 0; i < ans.size(); i++)
+    {
+        cout << ans[i] << " ";
+    }
 
     return 0;
 }

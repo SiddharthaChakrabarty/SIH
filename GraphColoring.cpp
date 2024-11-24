@@ -1,81 +1,60 @@
 #include <iostream>
 #include <vector>
-#include <algorithm>
 using namespace std;
 
-void graphColoring(vector<vector<int>> &adjList, int numVertices)
+void graphColoring(vector<vector<int>> &adj, int n)
 {
-    vector<int> result(numVertices, -1);
-    result[0] = 0;
+    vector<int> color(n, -1);
+    color[0] = 0;
+    vector<bool> availableColors(n, false);
 
-    vector<bool> available(numVertices, false);
-
-    for (int u = 1; u < numVertices; u++)
+    for (int u = 1; u < n; u++)
     {
-        for (int i : adjList[u])
+        for (int v : adj[u])
         {
-            if (result[i] != -1)
+            if (color[v] != -1)
             {
-                available[result[i]] = true;
+                availableColors[color[v]] = true;
             }
         }
 
-        int color;
-        for (color = 0; color < numVertices; color++)
+        int cr;
+        for (cr = 0; cr < n; cr++)
         {
-            if (!available[color])
-            {
+            if (!availableColors[cr])
                 break;
-            }
         }
 
-        result[u] = color;
-        fill(available.begin(), available.end(), false);
+        color[u] = cr;
+
+        for (int v : adj[u])
+        {
+            if (color[v] != -1)
+            {
+                availableColors[color[v]] = false;
+            }
+        }
     }
 
     cout << "Vertex\tColor" << endl;
-    for (int u = 0; u < numVertices; u++)
+    for (int i = 0; i < n; i++)
     {
-        cout << u << "\t" << result[u] << endl;
+        cout << i << "\t" << color[i] << endl;
     }
 }
 
 int main()
 {
-    int numVertices;
-    cout << "Enter the number of vertices: ";
-    cin >> numVertices;
-
-    vector<vector<int>> adjList(numVertices);
-
-    cout << "Enter the adjacency list of the graph (enter -1 to end the list for a vertex):" << endl;
-    for (int i = 0; i < numVertices; i++)
+    int n, e;
+    cin >> n >> e;
+    vector<vector<int>> adj(n);
+    for (int i = 0; i < e; i++)
     {
-        cout << "Vertex " << i << ": ";
-        int vertex;
-        while (cin >> vertex && vertex != -1)
-        {
-            adjList[i].push_back(vertex);
-        }
+        int u, v;
+        cin >> u >> v;
+        adj[u].push_back(v);
+        adj[v].push_back(u);
     }
-
-    graphColoring(adjList, numVertices);
-
+    graphColoring(adj, n);
     return 0;
 }
-
-/*
-Enter the number of vertices: 5
-Enter the adjacency list of the graph (enter -1 to end the list for a vertex):
-Vertex 0: 1 2 -1
-Vertex 1: 0 2 3 -1
-Vertex 2: 0 1 3 4 -1
-Vertex 3: 1 2 4 -1
-Vertex 4: 2 3 -1
-Vertex  Color
-0       0
-1       1
-2       2
-3       0
-4       1
-*/

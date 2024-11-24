@@ -1,147 +1,124 @@
 #include <iostream>
 #include <vector>
-#include <limits.h>
+#include <unordered_map>
+#include <limits>
+#include <string>
 
 using namespace std;
 
-#define MAX 20
-
 struct Node
 {
-    int id;
-    int cost;
-    bool isAndNode;
-    vector<int> children;
+    string name;
+    int heuristic;
+    vector<pair<vector<string>, int>> children; // Pair of {child nodes (for AND/OR), cost}
+    bool solved = false;                        // To track if the node is already solved
 };
 
-int AOStar(int node, vector<Node> &graph, vector<int> &solution)
+// Function to print the optimal path
+void printPath(const vector<string> &path)
 {
-    if (graph[node].children.empty())
+    cout << "Optimal Path: ";
+    for (const auto &node : path)
     {
-        solution.push_back(node);
-        return graph[node].cost;
+        cout << node << " ";
+    }
+    cout << endl;
+}
+
+// Recursive AO* algorithm function
+int aostar(unordered_map<string, Node> &graph, const string &nodeName, vector<string> &path)
+{
+    Node &node = graph[nodeName];
+    if (node.solved)
+    {
+        return node.heuristic; // Return the heuristic value if the node is already solved
     }
 
-    int minCost = INT_MAX;
-
-    if (graph[node].isAndNode)
+    if (node.children.empty())
     {
-        int cost1 = AOStar(graph[node].children[0], graph, solution);
-        int cost2 = AOStar(graph[node].children[1], graph, solution);
-        minCost = cost1 + cost2;
-        solution.push_back(node);
+        node.solved = true; // Mark leaf nodes as solved
+        return node.heuristic;
     }
-    else
+
+    int minCost = numeric_limits<int>::max();
+    vector<string> bestChildPath;
+
+    for (auto &child : node.children)
     {
-        int bestChild = -1;
-        for (int child : graph[node].children)
+        vector<string> tempPath;
+        int cost = child.second; // Cost of the edge
+
+        // Process all child nodes in the AND/OR group
+        for (const auto &childName : child.first)
         {
-            vector<int> tempSolution;
-            int cost = AOStar(child, graph, tempSolution);
-            if (cost < minCost)
-            {
-                minCost = cost;
-                bestChild = child;
-                solution = tempSolution;
-            }
+            tempPath.push_back(childName);
+            cost += aostar(graph, childName, tempPath); // Add the cost recursively
         }
-        solution.push_back(node);
+
+        if (cost < minCost)
+        {
+            minCost = cost;
+            bestChildPath = tempPath; // Update the best path
+        }
     }
 
-    return minCost;
+    node.heuristic = minCost; // Update the heuristic of the current node
+    node.solved = true;       // Mark the node as solved
+
+    path.push_back(nodeName);                                            // Add current node to the path
+    path.insert(path.end(), bestChildPath.begin(), bestChildPath.end()); // Append the best child path
+    return node.heuristic;
 }
 
 int main()
 {
+    unordered_map<string, Node> graph;
+
     int n;
-    cout << "Enter the number of nodes in the AND-OR graph: ";
+    cout << "Enter the number of nodes: ";
     cin >> n;
 
-    vector<Node> graph(n);
-    vector<int> solution;
-
+    cout << "Enter the node names and their heuristic values:" << endl;
     for (int i = 0; i < n; i++)
     {
-        cout << "Enter details for node " << i << ":\n";
-        graph[i].id = i;
-
-        cout << "Cost (heuristic value): ";
-        cin >> graph[i].cost;
-
-        char nodeType;
-        cout << "Is this node an AND node (enter 'Y' for yes, 'N' for no): ";
-        cin >> nodeType;
-        graph[i].isAndNode = (nodeType == 'Y' || nodeType == 'y');
-
-        int numChildren;
-        cout << "Number of children: ";
-        cin >> numChildren;
-        graph[i].children.resize(numChildren);
-
-        for (int j = 0; j < numChildren; j++)
-        {
-            cout << "Enter child " << j + 1 << " for node " << i << ": ";
-            cin >> graph[i].children[j];
-        }
+        string name;
+        int heuristic;
+        cin >> name >> heuristic;
+        graph[name] = Node{name, heuristic};
     }
 
-    int startNode = 0;
-    cout << "Enter the start node (root node): ";
-    cin >> startNode;
+    int edges;
+    cout << "Enter the number of edges: ";
+    cin >> edges;
 
-    int result = AOStar(startNode, graph, solution);
-
-    cout << "Optimal Solution Path: \n";
-    for (auto it = solution.rbegin(); it != solution.rend(); ++it)
+    cout << "Enter the edges in the format (parent child1,child2,... cost type(AND/OR)):" << endl;
+    for (int i = 0; i < edges; i++)
     {
-        cout << "Node " << *it << " -> ";
+        string parent, childList, type;
+        int cost;
+        cin >> parent >> childList >> cost >> type;
+
+        vector<string> children;
+        size_t pos = 0;
+        while ((pos = childList.find(',')) != string::npos)
+        {
+            children.push_back(childList.substr(0, pos));
+            childList.erase(0, pos + 1);
+        }
+        children.push_back(childList); // Add the last child
+
+        graph[parent].children.push_back({children, cost});
     }
-    cout << "END\n";
-    cout << "Total Cost: " << result << endl;
+
+    string start;
+    cout << "Enter the start node: ";
+    cin >> start;
+
+    vector<string> path;
+    int cost = aostar(graph, start, path);
+
+    cout << "Optimal Cost: " << cost << endl;
+    printPath(path);
 
     return 0;
 }
-
-/*
-
-Enter the number of nodes in the AND-OR graph: 7
-Enter details for node 0:
-Cost (heuristic value): 0
-Is this node an AND node (enter 'Y' for yes, 'N' for no): N
-Number of children: 2
-Enter child 1 for node 0: 1
-Enter child 2 for node 0: 2
-Enter details for node 1:
-Cost (heuristic value): 1
-Is this node an AND node (enter 'Y' for yes, 'N' for no): Y
-Number of children: 2
-Enter child 1 for node 1: 3
-Enter child 2 for node 1: 4
-Enter details for node 2:
-Cost (heuristic value): 2
-Is this node an AND node (enter 'Y' for yes, 'N' for no): Y
-Number of children: 2
-Enter child 1 for node 2: 5
-Enter child 2 for node 2: 6
-Enter details for node 3:
-Cost (heuristic value): 3
-Is this node an AND node (enter 'Y' for yes, 'N' for no): N
-Number of children: 0
-Enter details for node 4:
-Cost (heuristic value): 4
-Is this node an AND node (enter 'Y' for yes, 'N' for no): N
-Number of children: 0
-Enter details for node 5:
-Cost (heuristic value): 5
-Is this node an AND node (enter 'Y' for yes, 'N' for no): N
-Number of children: 0
-Enter details for node 6:
-Cost (heuristic value): 6
-Is this node an AND node (enter 'Y' for yes, 'N' for no): N
-Number of children: 0
-Enter the start node (root node): 0
-Optimal Solution Path:
-Node 0 -> Node 1 -> Node 4 -> Node 3 -> END
-Total Cost: 8
-
-*/

@@ -1,180 +1,104 @@
 #include <iostream>
 #include <vector>
 #include <queue>
-#include <unordered_map>
-#include <limits>
 #include <algorithm>
+#include <climits>
 
 using namespace std;
 
-struct Node
+void reconstructPath(vector<int> parent, int goal)
 {
-    int vertex;
-    double cost;
-    double heuristic;
-    Node *parent;
-
-    Node(int v, double c, double h, Node *p = nullptr) : vertex(v), cost(c), heuristic(h), parent(p) {}
-
-    double totalCost() const
-    {
-        return cost + heuristic;
-    }
-
-    bool operator>(const Node &other) const
-    {
-        return totalCost() > other.totalCost();
-    }
-};
-
-double heuristic(int current, const vector<double> &heuristics)
-{
-    return heuristics[current];
-}
-
-vector<int> reconstructPath(Node *node)
-{
+    int curr = goal;
     vector<int> path;
-    while (node)
+    while (curr != -1)
     {
-        path.push_back(node->vertex);
-        node = node->parent;
+        path.push_back(curr);
+        curr = parent[curr];
     }
     reverse(path.begin(), path.end());
-    return path;
+    cout << "Path: ";
+    for (int node : path)
+    {
+        cout << node << " ";
+    }
+    cout << endl;
 }
 
-vector<int> aStar(const vector<vector<pair<int, int>>> &adjList, int start, int goal, const vector<double> &heuristics)
+void astar(vector<vector<pair<int, int>>> &adj, vector<int> &h, int start, int goal, int n)
 {
-    priority_queue<Node, vector<Node>, greater<>> openSet;
-    unordered_map<int, double> gScore;
-    unordered_map<int, Node *> allNodes;
+    vector<int> g(n, INT_MAX);
+    vector<bool> vis(n, false);
+    vector<int> parent(n, -1);
+    priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> pq;
 
-    for (int i = 0; i < adjList.size(); ++i)
+    g[start] = 0;
+    pq.push({h[start], start});
+
+    while (!pq.empty())
     {
-        gScore[i] = numeric_limits<double>::infinity();
-    }
+        int node = pq.top().second;
+        int f = pq.top().first;
+        pq.pop();
 
-    gScore[start] = 0;
-    openSet.emplace(start, 0, heuristic(start, heuristics));
-    allNodes[start] = new Node(start, 0, heuristic(start, heuristics));
+        if (vis[node])
+            continue;
+        vis[node] = true;
 
-    while (!openSet.empty())
-    {
-        Node current = openSet.top();
-        openSet.pop();
-
-        if (current.vertex == goal)
+        if (node == goal)
         {
-            vector<int> path = reconstructPath(allNodes[goal]);
-
-            for (auto &pair : allNodes)
-            {
-                delete pair.second;
-            }
-            return path;
+            cout << "Total cost: " << g[goal] << endl;
+            reconstructPath(parent, goal);
+            return;
         }
 
-        for (const auto &neighbor : adjList[current.vertex])
+        for (auto &neighbor : adj[node])
         {
-            int neighborVertex = neighbor.first;
-            double edgeCost = neighbor.second;
+            int adjnode = neighbor.first;
+            int weight = neighbor.second;
 
-            double tentative_gScore = gScore[current.vertex] + edgeCost;
-
-            if (tentative_gScore < gScore[neighborVertex])
+            if (!vis[adjnode] && g[node] + weight < g[adjnode])
             {
-                gScore[neighborVertex] = tentative_gScore;
-                Node *neighborNode = new Node(neighborVertex, tentative_gScore, heuristic(neighborVertex, heuristics), new Node(current));
-
-                openSet.push(*neighborNode);
-                if (allNodes.find(neighborVertex) != allNodes.end())
-                {
-                    delete allNodes[neighborVertex];
-                }
-                allNodes[neighborVertex] = neighborNode;
+                g[adjnode] = g[node] + weight;
+                parent[adjnode] = node;
+                pq.push({g[adjnode] + h[adjnode], adjnode});
             }
         }
     }
 
-    for (auto &pair : allNodes)
-    {
-        delete pair.second;
-    }
-
-    return {};
+    cout << "No path exists from " << start << " to " << goal << endl;
 }
 
 int main()
 {
-    int numNodes;
-    cout << "Enter the number of nodes: ";
-    cin >> numNodes;
+    int n, e;
+    cout << "Enter the number of nodes and edges: ";
+    cin >> n >> e;
 
-    vector<vector<pair<int, int>>> adjList(numNodes);
-    vector<double> heuristics(numNodes);
+    vector<vector<pair<int, int>>> adj(n);
 
-    int numEdges;
-    cout << "Enter the number of edges: ";
-    cin >> numEdges;
-
-    cout << "Enter the edges (format: start_node end_node cost):" << endl;
-    for (int i = 0; i < numEdges; ++i)
+    cout << "Enter the edges (u, v, weight):" << endl;
+    for (int i = 0; i < e; i++)
     {
-        int u, v, cost;
-        cin >> u >> v >> cost;
-        adjList[u].emplace_back(v, cost);
-        adjList[v].emplace_back(u, cost);
+        int u, v, w;
+        cin >> u >> v >> w;
+        adj[u].emplace_back(v, w);
+        adj[v].emplace_back(u, w);
     }
 
-    cout << "Enter the heuristic values for each node:" << endl;
-    for (int i = 0; i < numNodes; ++i)
+    vector<int> h(n);
+    cout << "Enter the heuristic values of the nodes:" << endl;
+    for (int i = 0; i < n; i++)
     {
-        cout << "Heuristic value for node " << i << ": ";
-        cin >> heuristics[i];
+        cin >> h[i];
     }
 
     int start, goal;
-    cout << "Enter the start node: ";
+    cout << "Enter start node: ";
     cin >> start;
-    cout << "Enter the goal node: ";
+    cout << "Enter goal node: ";
     cin >> goal;
 
-    vector<int> path = aStar(adjList, start, goal, heuristics);
-
-    if (!path.empty())
-    {
-        cout << "Path found: ";
-        for (int vertex : path)
-        {
-            cout << vertex << " ";
-        }
-        cout << endl;
-    }
-    else
-    {
-        cout << "No path found." << endl;
-    }
+    astar(adj, h, start, goal, n);
 
     return 0;
 }
-
-/*
-Enter the number of nodes: 5
-Enter the number of edges: 6
-Enter the edges (format: start_node end_node cost):
-0 1 1
-0 2 4
-1 2 1
-1 3 2
-2 4 1
-3 4 5
-Enter the heuristic values for each node:
-Heuristic value for node 0: 6
-Heuristic value for node 1: 3
-Heuristic value for node 2: 1
-Heuristic value for node 3: 5
-Heuristic value for node 4: 0
-Enter the start node: 0
-Enter the goal node: 4
-*/
